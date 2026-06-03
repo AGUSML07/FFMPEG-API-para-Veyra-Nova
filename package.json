@@ -1,0 +1,16 @@
+{
+  "name": "ffmpeg-api",
+  "version": "1.0.0",
+  "description": "FFmpeg API for Walter Studio TikTok workflow",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.6.0",
+    "cloudinary": "^1.41.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "uuid": "^9.0.0"
+  }
+}
