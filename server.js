@@ -5,6 +5,8 @@ const ffmpeg = require('fluent-ffmpeg');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const ffmpegStatic = require('ffmpeg-static');
+ffmpeg.setFfmpegPath(ffmpegStatic);
 const { execSync } = require('child_process');
 
 const app = express();
@@ -97,7 +99,7 @@ app.post('/render', async (req, res) => {
 
     // Concatenate clips
     const concatPath = path.join(tmpDir, 'concat.mp4');
-    execSync(`ffmpeg -f concat -safe 0 -i "${listPath}" -c copy "${concatPath}"`);
+    execSync(`"${ffmpegStatic}" -f concat -safe 0 -i "${listPath}" -c copy "${concatPath}"`);
     console.log(`[${jobId}] Clips concatenated`);
 
     // Mix audio with video
