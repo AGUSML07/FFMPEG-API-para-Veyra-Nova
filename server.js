@@ -10,7 +10,7 @@ ffmpeg.setFfmpegPath(ffmpegStatic);
 const { execSync } = require('child_process');
 
 const app = express();
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
 
 // Cloudinary config
 cloudinary.config({
@@ -37,14 +37,20 @@ app.post('/render', async (req, res) => {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   try {
-    const { scenes, audio_url } = req.body;
+    const { scenes, audio_url, audio_base64 } = req.body;
     console.log(`[${jobId}] Starting render with ${scenes.length} scenes`);
 
-    // Download audio
+    // Download or decode audio
     const audioPath = path.join(tmpDir, 'audio.mp3');
-    const audioResponse = await axios.get(audio_url, { responseType: 'arraybuffer' });
-    fs.writeFileSync(audioPath, audioResponse.data);
-    console.log(`[${jobId}] Audio downloaded`);
+    if (audio_base64) {
+      const b64 = audio_base64.replace(/^data:audio\/\w+;base64,/, '');
+      fs.writeFileSync(audioPath, Buffer.from(b64, 'base64'));
+      console.log(`[${jobId}] Audio decoded from base64`);
+    } else {
+      const audioResponse = await axios.get(audio_url, { responseType: 'arraybuffer' });
+      fs.writeFileSync(audioPath, audioResponse.data);
+      console.log(`[${jobId}] Audio downloaded`);
+    }
 
     // Process each scene
     const clipPaths = [];
@@ -57,7 +63,7 @@ app.post('/render', async (req, res) => {
       if (scene.image_base64) {
         const base64Data = scene.image_base64.replace(/^data:image\/\w+;base64,/, '');
         fs.writeFileSync(imgPath, Buffer.from(base64Data, 'base64'));
-      } else if (scene.image_url) {
+      } else {
         const imgResponse = await axios.get(scene.image_url, { responseType: 'arraybuffer' });
         fs.writeFileSync(imgPath, imgResponse.data);
       }
@@ -126,11 +132,10 @@ app.post('/render', async (req, res) => {
       public_id: `tiktok_${jobId}`,
       folder: 'walter_studio'
     });
-
     console.log(`[${jobId}] Uploaded to Cloudinary: ${uploadResult.secure_url}`);
 
     // Cleanup
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
 
     res.json({
       success: true,
@@ -141,7 +146,7 @@ app.post('/render', async (req, res) => {
 
   } catch (error) {
     console.error(`[${jobId}] Error:`, error.message);
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
     res.status(500).json({ error: error.message, job_id: jobId });
   }
 });
